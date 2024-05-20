@@ -1,9 +1,7 @@
 "use client";
-
 import TodoList from "@/components/TodoList";
-import { deleteTodo, getTodos } from "@/hooks/useTodo";
+import { getTodos } from "@/hooks/useTodo";
 import { useTodoContext } from "@/hooks/useTodoContext";
-import { User } from "@/type/index";
 import { BuiltInProviderType } from "next-auth/providers";
 import { useSession, getProviders, LiteralUnion, ClientSafeProvider, signIn } from "next-auth/react";
 import Image from "next/image";
@@ -12,38 +10,14 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const { data: session } = useSession();
-  const user = session?.user as User;
+  const user = session?.user as { id: string };
   const router = useRouter();
 
   const [providers, setProviders] = useState<Record<
     LiteralUnion<BuiltInProviderType, string>,
     ClientSafeProvider
   > | null>(null);
-  const { todos, dispatch } = useTodoContext();
-
-  async function fetchTodos() {
-    if (user) {
-      const { response, json } = await getTodos(user!);
-
-      if (response.ok) {
-        dispatch({ type: "SET_TODOS", payload: json });
-      }
-    }
-  }
-
-  function handleDeleteDoneTodos(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
-    e.preventDefault();
-
-    todos.map(async (todo) => {
-      if (todo.doneState === true) {
-        const { response, json } = await deleteTodo(todo);
-
-        if (response.ok) {
-          todo.doneState ? dispatch({ type: "DELETE_TODO", payload: json }) : todo;
-        }
-      }
-    });
-  }
+  const { todos } = useTodoContext();
 
   useEffect(() => {
     async function setupProviders() {
@@ -53,28 +27,18 @@ export default function Home() {
     }
 
     setupProviders();
+    if (user) getTodos(session?.user as { id: string });
 
-    if (user) {
-      fetchTodos();
-      router.push("/");
-    }
+    if (session?.user) router.push("/");
   }, [router, session]);
 
   return (
     <div className="w-full">
       {session?.user && (
         <div>
-          <div className="flex items-center mt-10 justify-between">
-            <h1 className="head_text">Todo List</h1>
-            <button
-              className="text-xl bg-blue-700 text-white rounded-md p-5 hover:bg-blue-900 transition-all duration-200"
-              onClick={handleDeleteDoneTodos}
-            >
-              Delete Done Todos
-            </button>
-          </div>
+          <h1 className="head_text">Todo List</h1>
 
-          <TodoList todos={todos} />
+          <TodoList todos={todos} handleDelete={deleteTodo} handleUpdate={updateTodo} handleCreate={createTodo} />
         </div>
       )}
 
